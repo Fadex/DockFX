@@ -28,8 +28,10 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.Stack;
 
 import com.sun.javafx.css.StyleManager;
@@ -204,6 +206,8 @@ public class DockPane extends StackPane implements EventHandler<DockEvent> {
 
   private ObservableList<DockNode> undockedNodes;
 
+  private Set<DockNode> nodes;
+
   /**
    * Creates a new DockPane adding event handlers for dock events and creating the indicator
    * overlays.
@@ -302,6 +306,7 @@ public class DockPane extends StackPane implements EventHandler<DockEvent> {
     dockAreaIndicator.getStyleClass().add("dock-area-indicator");
 
     undockedNodes = FXCollections.observableArrayList();
+	nodes = new HashSet<>();
   }
 
   /**
@@ -398,7 +403,8 @@ public class DockPane extends StackPane implements EventHandler<DockEvent> {
    * @param dockPos The docking position of the node relative to the sibling.
    * @param sibling The sibling of this node in the layout.
    */
-  void dock(Node node, DockPos dockPos, Node sibling) {
+  void dock(DockNode node, DockPos dockPos, Node sibling) {
+	nodes.add(node);
     DockNodeEventHandler dockNodeEventHandler = new DockNodeEventHandler(node);
     dockNodeEventFilters.put(node, dockNodeEventHandler);
     node.addEventFilter(DockEvent.DOCK_OVER, dockNodeEventHandler);
@@ -530,7 +536,7 @@ public class DockPane extends StackPane implements EventHandler<DockEvent> {
    * @param node    The node that is to be docked into this dock pane.
    * @param dockPos The docking position of the node relative to the sibling.
    */
-  void dock(Node node, DockPos dockPos) {
+  void dock(DockNode node, DockPos dockPos) {
     dock(node, dockPos, root);
   }
 
@@ -704,54 +710,51 @@ public class DockPane extends StackPane implements EventHandler<DockEvent> {
   }
 
   public void storePreference(String filePath) {
-    ContentPane pane = (ContentPane) root;
+		ContentPane pane = (ContentPane) root;
 
-    HashMap<String, ContentHolder> contents = new HashMap<>();
+		HashMap<String, ContentHolder> contents = new HashMap<>();
 
-    // Floating Nodes collection
-    contents
-        .put("_FloatingNodes", new ContentHolder("_FloatingNodes", ContentHolder.Type.Collection));
+		// Floating Nodes collection
+		contents.put("_FloatingNodes", new ContentHolder("_FloatingNodes", ContentHolder.Type.Collection));
 
-    List<DockNode> floatingNodes = new LinkedList<>(undockedNodes);
+		List<DockNode> floatingNodes = new LinkedList<>(undockedNodes);
 
-    for (int i = 0; i < floatingNodes.size(); i++) {
-//		System.out.println(floatingNodes.get(i).getTitle());
-      ContentHolder
-          floatingNode =
-          new ContentHolder(floatingNodes.get(i).getTitle(), ContentHolder.Type.FloatingNode);
-      floatingNode.addProperty("Title", floatingNodes.get(i).getTitle());
-      floatingNode.addProperty("Size", new Double[]{
-          floatingNodes.get(i).getLayoutBounds().getWidth(),
-          floatingNodes.get(i).getLayoutBounds().getHeight()
-      });
-      floatingNode.addProperty("Minimized", floatingNodes.get(i).isMinimized());
+		for (int i = 0; i < floatingNodes.size(); i++) {
+			ContentHolder floatingNode = new ContentHolder(floatingNodes.get(i).getTitle(),
+					ContentHolder.Type.FloatingNode);
+			floatingNode.addProperty("Title", floatingNodes.get(i).getTitle());
+			floatingNode.addProperty("Size", new Double[] { floatingNodes.get(i).getLayoutBounds().getWidth(),
+					floatingNodes.get(i).getLayoutBounds().getHeight() });
+			floatingNode.addProperty("Minimized", floatingNodes.get(i).isMinimized());
 
-      Point2D
-          loc =
-          floatingNodes.get(i).localToScreen(floatingNodes.get(i).getLayoutBounds().getMinX(),
-                                             floatingNodes.get(i).getLayoutBounds().getMinY());
+			Point2D loc = floatingNodes.get(i).localToScreen(floatingNodes.get(i).getLayoutBounds().getMinX(),
+					floatingNodes.get(i).getLayoutBounds().getMinY());
 
-      floatingNode.addProperty("Position", new Double[]{
-          loc.getX(), loc.getY()
-      });
+			floatingNode.addProperty("Position", new Double[] { loc.getX(), loc.getY() });
 
-      contents.get("_FloatingNodes").addChild(floatingNode);
-    }
+			contents.get("_FloatingNodes").addChild(floatingNode);
+		}
 
-    // Prepare Docking Nodes collection
-    List<DockNode> dockingNodes = new LinkedList<>();
+		if (root != null) {
+			// Prepare Docking Nodes collection
+			List<DockNode> dockingNodes = new LinkedList<>();
+			Integer count = 0;
+			checkPane(contents, pane, dockingNodes, count);
+		}
 
-    Integer count = 0;
+		ContentHolder systemProperties = new ContentHolder("systemProperties", ContentHolder.Type.Collection);
+		contents.put("systemProperties", systemProperties);
+		systemProperties.addProperty("Size",
+				new Double[] { this.getScene().getWindow().getWidth(), this.getScene().getWindow().getHeight() });
+		systemProperties.addProperty("Position",
+				new Double[] { this.getScene().getWindow().getX(), this.getScene().getWindow().getY() });
+		systemProperties.addProperty("emptyRoot", root == null);
+		nodes.forEach(n -> {
+			systemProperties.addProperty(n.getTitle(), n.isClosed());
+		});
 
-    checkPane(contents, pane, dockingNodes, count);
-
-    contents.get("0").addProperty("Size", new Double[]{this.getScene().getWindow().getWidth(),
-                                                       this.getScene().getWindow().getHeight()});
-    contents.get("0").addProperty("Position", new Double[]{this.getScene().getWindow().getX(),
-                                                           this.getScene().getWindow().getY()});
-
-    storeCollection(filePath, contents);
-  }
+		storeCollection(filePath, contents);
+	}
 
   private Object loadCollection(String fileName) {
     XMLDecoder e = null;
@@ -851,64 +854,75 @@ public class DockPane extends StackPane implements EventHandler<DockEvent> {
     }
   }
 
-  private void applyPane(HashMap<String, ContentHolder> contents, ContentPane root, DelayOpenHandler delayOpenHandler) {
-    // Collect the current pane information
-    HashMap<String, DockNode> dockNodes = new HashMap<>();
+	private void applyPane(HashMap<String, ContentHolder> contents, ContentPane root,
+			DelayOpenHandler delayOpenHandler) {
+		// Collect the current pane information
+		HashMap<String, DockNode> dockNodes = new HashMap<>();
 
-    // undockNodes
-    for (DockNode node : undockedNodes) {
-      dockNodes.put(node.getTitle(), node);
-    }
+		// undockNodes
+		for (DockNode node : undockedNodes) {
+			dockNodes.put(node.getTitle(), node);
+		}
 
-    collectDockNodes(dockNodes, root);
+		collectDockNodes(dockNodes, root);
 
-    Double[] windowSize = (Double[]) contents.get("0").getProperties().get("Size");
-    Double[] windowPosition = (Double[]) contents.get("0").getProperties().get("Position");
+		ContentHolder systemProperties = contents.get("systemProperties");
 
-    Stage currentStage = (Stage) this.getScene().getWindow();
-    currentStage.setX(windowPosition[0]);
-    currentStage.setY(windowPosition[1]);
+		Double[] windowSize = (Double[]) systemProperties.getProperties().get("Size");
+		Double[] windowPosition = (Double[]) systemProperties.getProperties().get("Position");
 
-    currentStage.setWidth(windowSize[0]);
-    currentStage.setHeight(windowSize[1]);
+		Stage currentStage = (Stage) this.getScene().getWindow();
+		currentStage.setX(windowPosition[0]);
+		currentStage.setY(windowPosition[1]);
 
-    // Set floating docks according to the preference data
-    for (Object item : contents.get("_FloatingNodes").getChildren()) {
-      ContentHolder holder = (ContentHolder) item;
-      String title = holder.getProperties().getProperty("Title");
-      Double[] size = (Double[]) holder.getProperties().get("Size");
-      Double[] position = (Double[]) holder.getProperties().get("Position");
-      boolean minimized = (boolean) holder.getProperties().getOrDefault( "Minimized", false );
-      DockNode node = dockNodes.get(title);
-      if(null == node && null != delayOpenHandler)
-        node = delayOpenHandler.open(title);
+		currentStage.setWidth(windowSize[0]);
+		currentStage.setHeight(windowSize[1]);
 
-      if(null != node) {
-        node.setFloating(true, null, this);
+		// Set floating docks according to the preference data
+		for (Object item : contents.get("_FloatingNodes").getChildren()) {
+			ContentHolder holder = (ContentHolder) item;
+			String title = holder.getProperties().getProperty("Title");
+			Double[] size = (Double[]) holder.getProperties().get("Size");
+			Double[] position = (Double[]) holder.getProperties().get("Position");
+			boolean minimized = (boolean) holder.getProperties().getOrDefault("Minimized", false);
+			DockNode node = dockNodes.get(title);
+			if (null == node && null != delayOpenHandler)
+				node = delayOpenHandler.open(title);
 
-        node.getStage().setX(position[0]);
-        node.getStage().setY(position[1]);
+			if (null != node) {
+				node.setFloating(true, null, this);
 
-	  	node.getStage().setWidth(size[0]);
-        node.getStage().setHeight(size[1]);
+				node.getStage().setX(position[0]);
+				node.getStage().setY(position[1]);
 
-        dockNodes.remove(title);
+				node.getStage().setWidth(size[0]);
+				node.getStage().setHeight(size[1]);
 
-        node.setMinimized( minimized );
-      }
-      else {
-        System.err.println(item + " is not present.");
-      }
-    }
+				dockNodes.remove(title);
 
-    // Restore dock location based on the preferences
-    // Make it sorted
-    ContentHolder rootHolder = contents.get("0");
-    Node newRoot = buildPane(null, rootHolder, dockNodes, delayOpenHandler);
+				node.setMinimized(minimized);
+			} else {
+				System.err.println(item + " is not present.");
+			}
+		}
 
-    this.root = newRoot;
-    this.getChildren().set(0, this.root);
-  }
+		boolean emptyRoot = (boolean) systemProperties.getProperties().getOrDefault("emptyRoot", true);
+		if (!emptyRoot) {
+			// Restore dock location based on the preferences
+			// Make it sorted
+			ContentHolder rootHolder = contents.get("0");
+			Node newRoot = buildPane(null, rootHolder, dockNodes, delayOpenHandler);
+
+			this.root = newRoot;
+			this.getChildren().set(0, this.root);
+		}
+		nodes.forEach(n -> {
+			boolean isClosed = (boolean) systemProperties.getProperties().getOrDefault(n.getTitle(), emptyRoot);
+			if (isClosed)
+				n.close();
+		});
+
+	}
 
   private Node buildPane(ContentPane parent, ContentHolder holder, HashMap<String, DockNode> dockNodes, DelayOpenHandler delayOpenHandler) {
     Node pane = null;
