@@ -38,6 +38,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -69,6 +70,7 @@ public class DockTitleBar extends HBox implements EventHandler<MouseEvent> {
 	 * restore.
 	 */
 	private final Button closeButton, stateButton, minimizeButton, backButton, listButton, renameBtn, maximizeButtnon;
+	private final ToggleButton pinButton;
 
 	private ContextMenu contextMenu;
 
@@ -126,6 +128,9 @@ public class DockTitleBar extends HBox implements EventHandler<MouseEvent> {
 		maximizeButtnon.visibleProperty().bind(dockNode.dockedProperty());
 		maximizeButtnon.managedProperty().bind(maximizeButtnon.visibleProperty());
 
+		pinButton = new ToggleButton();
+		pinButton.setOnAction(ev -> dockNode.getStage().setAlwaysOnTop(pinButton.isSelected()));
+
 		this.addEventHandler(MouseEvent.MOUSE_PRESSED, this);
 		this.addEventHandler(MouseEvent.DRAG_DETECTED, this);
 		this.addEventHandler(MouseEvent.MOUSE_DRAGGED, this);
@@ -139,6 +144,7 @@ public class DockTitleBar extends HBox implements EventHandler<MouseEvent> {
 		listButton.getStyleClass().add("dock-list-button");
 		renameBtn.getStyleClass().add("rename-button");
 		maximizeButtnon.getStyleClass().add("dock-maximize-button");
+		pinButton.getStyleClass().add("dock-pin-button");
 		this.getStyleClass().add("dock-title-bar");
 
 		closeButton.setMaxSize(BUTTON_MAX_WIDTH, BUTTON_MAX_HEIGHT);
@@ -164,12 +170,13 @@ public class DockTitleBar extends HBox implements EventHandler<MouseEvent> {
 			}
 		});
 
-		getChildren().addAll(listButton, label, fillPane, backButton, renameBtn, minimizeButton, stateButton,
+		getChildren().addAll(listButton, label, fillPane, pinButton, backButton, renameBtn, minimizeButton, stateButton,
 				maximizeButtnon, closeButton);
 		minimizeButton.visibleProperty().bind(dockNode.floatingProperty());
 		minimizeButton.managedProperty().bind(minimizeButton.visibleProperty());
 		backButton.visibleProperty().bind(dockNode.floatingProperty());
 		listButton.managedProperty().bind(listButton.visibleProperty());
+		pinButton.visibleProperty().bind(dockNode.floatingProperty());
 	}
 
 	void addMenuItem(MenuItem... menuItems) {
@@ -530,6 +537,14 @@ public class DockTitleBar extends HBox implements EventHandler<MouseEvent> {
 		}
 	}
 
+	public boolean isAlwaysOnTop() {
+		return pinButton.isSelected();
+	}
+
+	public void setAlwaysOnTop(boolean alwaysOnTop) {
+		pinButton.setSelected(alwaysOnTop);
+	}
+
 	public void setBackButtonToottip(String tooltip) {
 		backButton.setTooltip(new Tooltip(tooltip));
 	}
@@ -540,5 +555,9 @@ public class DockTitleBar extends HBox implements EventHandler<MouseEvent> {
 
 	public void setRenameButtonToottip(String tooltip) {
 		renameBtn.setTooltip(new Tooltip(tooltip));
+	}
+
+	public void setPinButtonTooltip(String tooltip) {
+		pinButton.setTooltip(new Tooltip(tooltip));
 	}
 }

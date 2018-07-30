@@ -20,7 +20,13 @@
 
 package org.dockfx;
 
-import javafx.stage.WindowEvent;
+import java.util.List;
+
+import org.dockfx.pane.ContentPane;
+import org.dockfx.pane.ContentPane.Type;
+import org.dockfx.pane.ContentSplitPane;
+import org.dockfx.pane.ContentTabPane;
+import org.dockfx.pane.DockNodeTab;
 import org.dockfx.viewControllers.DockFXViewController;
 
 import javafx.beans.property.BooleanProperty;
@@ -52,14 +58,7 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
-
-import java.util.List;
-
-import org.dockfx.pane.ContentPane;
-import org.dockfx.pane.ContentPane.Type;
-import org.dockfx.pane.ContentSplitPane;
-import org.dockfx.pane.ContentTabPane;
-import org.dockfx.pane.DockNodeTab;
+import javafx.stage.WindowEvent;
 
 /**
  * Base class for a dock node that provides the layout of the content along with
@@ -440,6 +439,7 @@ public class DockNode extends VBox implements EventHandler<MouseEvent> {
 			}
 
 			stage = new Stage();
+			stage.setAlwaysOnTop(dockTitleBar.isAlwaysOnTop());
 
 			EventHandler<WindowEvent> mainWindowCloseHandler = dockPane.getScene().getWindow().getOnCloseRequest();
 			dockPane.getScene().getWindow().setOnCloseRequest(event -> {
@@ -548,6 +548,7 @@ public class DockNode extends VBox implements EventHandler<MouseEvent> {
 			stage.sizeToScene();
 
 			stage.show();
+			stage.setOnCloseRequest(r -> close());
 		} else if (!floating && this.isFloating()) {
 			this.floatingProperty.set(floating);
 			// this.setMinimizable(floating);
@@ -1161,11 +1162,12 @@ public class DockNode extends VBox implements EventHandler<MouseEvent> {
 			sizeLast = new Point2D(event.getScreenX(), event.getScreenY());
 		} else if (event.getEventType() == MouseEvent.MOUSE_MOVED) {
 			Insets insets = borderPane.getPadding();
+			int tolerance = 6;
 
-			sizeWest = event.getX() < insets.getLeft();
-			sizeEast = event.getX() > borderPane.getWidth() - insets.getRight();
-			sizeNorth = event.getY() < insets.getTop();
-			sizeSouth = event.getY() > borderPane.getHeight() - insets.getBottom();
+			sizeWest = event.getX() < insets.getLeft() + tolerance;
+			sizeEast = event.getX() > borderPane.getWidth() - insets.getRight() - tolerance;
+			sizeNorth = event.getY() < insets.getTop() + tolerance;
+			sizeSouth = event.getY() > borderPane.getHeight() - insets.getBottom() - tolerance;
 
 			if (sizeWest) {
 				if (sizeNorth) {
@@ -1387,6 +1389,11 @@ public class DockNode extends VBox implements EventHandler<MouseEvent> {
 		titleRenamed = true;
 	}
 
+	public DockNode setAlwaysOnTop(boolean alwaysOnTop) {
+		dockTitleBar.setAlwaysOnTop(alwaysOnTop);
+		return this;
+	}
+
 	public DockNode setBackButtonToottip(String tooltip) {
 		dockTitleBar.setBackButtonToottip(tooltip);
 		return this;
@@ -1399,6 +1406,11 @@ public class DockNode extends VBox implements EventHandler<MouseEvent> {
 
 	public DockNode setRenameButtonToottip(String tooltip) {
 		dockTitleBar.setRenameButtonToottip(tooltip);
+		return this;
+	}
+
+	public DockNode setPinButtonTooltip(String tooltip) {
+		dockTitleBar.setPinButtonTooltip(tooltip);
 		return this;
 	}
 }
