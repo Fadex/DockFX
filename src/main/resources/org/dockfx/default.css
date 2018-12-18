@@ -165,6 +165,20 @@
 	-fx-background-color: #3f3f3f;
 }
 
+.dock-title-bar .toggle-button {
+	-fx-padding: 0;
+	-fx-background-color: transparent;
+}
+
+.dock-title-bar .toggle-button:hover,
+.dock-title-bar .toggle-button:selected {
+	-fx-background-color: #b6b6b6;
+}
+
+.dock-title-bar .toggle-button:pressed {
+	-fx-background-color: #3f3f3f;
+}
+
 /* Set the icons for the dock title bar's buttons here. */
 .dock-state-button {
 	-fx-graphic: url(gray/restore.png);
@@ -201,4 +215,8 @@
 
 .dock-maximize-button {
 	-fx-graphic: url(gray/maximize.png);
+}
+
+.dock-pin-button {
+	-fx-graphic: url(gray/pin.png);
 }

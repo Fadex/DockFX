@@ -27,20 +27,17 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Random;
 
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuBar;
-import javafx.scene.control.MenuItem;
-import javafx.scene.layout.BorderPane;
 import org.dockfx.DockNode;
 import org.dockfx.DockPane;
 import org.dockfx.DockPos;
 
 import javafx.application.Application;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.scene.Scene;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableColumn;
@@ -50,6 +47,7 @@ import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.web.HTMLEditor;
 import javafx.stage.Stage;
 
@@ -143,7 +141,7 @@ public class DockFX extends Application {
 
     // can be created and docked before or after the scene is created
     // and the stage is shown
-    DockNode treeDock = new DockNode(generateRandomTree(), "Tree Dock1", new ImageView(dockImage));
+    DockNode treeDock = new DockNode(generateRandomTree(), "Tree Dock1", new ImageView(dockImage)).setAlwaysOnTop(true);
     treeDock.setPrefSize(100, 100);
     treeDock.dock(dockPane, DockPos.LEFT);
     treeDock = new DockNode(generateRandomTree(), "Tree Dock2", new ImageView(dockImage));
